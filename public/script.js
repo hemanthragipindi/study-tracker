@@ -1,156 +1,80 @@
-const API = ""; // Keep empty for Render deployment
+let token = localStorage.getItem("token");
 
-let isLogin = true;
-
-// Toggle between Login & Register
-function toggleForm() {
-  isLogin = !isLogin;
-
-  document.getElementById("formTitle").innerText = isLogin ? "Login" : "Register";
-  document.getElementById("name").style.display = isLogin ? "none" : "block";
-  document.getElementById("toggleText").innerText =
-    isLogin ? "Don't have an account? Register" : "Already have an account? Login";
-}
-
-// Submit Login / Register
-async function submitAuth() {
+async function register() {
   const name = document.getElementById("name").value;
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
-  if (!email || !password) {
-    alert("Please fill all fields");
-    return;
-  }
+  const res = await fetch("/api/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, password })
+  });
 
-  const endpoint = isLogin ? "/api/login" : "/api/register";
+  const data = await res.json();
+  alert(data.message || data.error);
+}
 
-  const body = isLogin
-    ? { email, password }
-    : { name, email, password };
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-  try {
-    const res = await fetch(API + endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
 
-    const data = await res.json();
-    console.log("Response:", data);
+  const data = await res.json();
 
-    if (!res.ok) {
-      alert(data.error || "Something went wrong");
-      return;
-    }
-
-    if (isLogin) {
-      if (!data.token) {
-        alert("Login failed. No token received.");
-        return;
-      }
-
-      localStorage.setItem("token", data.token);
-      loadDashboard();
-    } else {
-      alert("Registered successfully! Now login.");
-      toggleForm();
-    }
-
-  } catch (err) {
-    console.error(err);
-    alert("Server error. Try again.");
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+    location.reload();
+  } else {
+    alert(data.error);
   }
 }
 
-// Logout
-function logout() {
-  localStorage.removeItem("token");
-  location.reload();
+async function loadTasks() {
+  const res = await fetch("/api/tasks", {
+    headers: { Authorization: token }
+  });
+
+  const tasks = await res.json();
+  const list = document.getElementById("taskList");
+  list.innerHTML = "";
+
+  tasks.forEach(task => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      ${task.title} (${task.subject})
+      <button onclick="deleteTask('${task._id}')">X</button>
+    `;
+    list.appendChild(li);
+  });
 }
 
-// Show dashboard
-function loadDashboard() {
-  document.getElementById("authCard").classList.add("hidden");
-  document.getElementById("dashboard").classList.remove("hidden");
-  loadTasks();
-}
-
-// Add task
 async function addTask() {
   const title = document.getElementById("title").value;
   const subject = document.getElementById("subject").value;
-  const hours = document.getElementById("hours").value;
 
-  if (!title || !subject || !hours) {
-    alert("Fill all task fields");
-    return;
-  }
-
-  await fetch(API + "/api/tasks", {
+  await fetch("/api/tasks", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": localStorage.getItem("token")
+      Authorization: token
     },
-    body: JSON.stringify({ title, subject, hours })
+    body: JSON.stringify({ title, subject })
   });
-
-  document.getElementById("title").value = "";
-  document.getElementById("subject").value = "";
-  document.getElementById("hours").value = "";
 
   loadTasks();
 }
 
-// Load tasks
-async function loadTasks() {
-  try {
-    const res = await fetch(API + "/api/tasks", {
-      headers: {
-        "Authorization": localStorage.getItem("token")
-      }
-    });
-
-    if (!res.ok) {
-      logout();
-      return;
-    }
-
-    const tasks = await res.json();
-
-    const taskList = document.getElementById("taskList");
-    taskList.innerHTML = "";
-
-    tasks.forEach(task => {
-      const div = document.createElement("div");
-      div.className = "task";
-      div.innerHTML = `
-        <strong>${task.title}</strong><br>
-        ${task.subject} - ${task.hours} hours
-        <button onclick="deleteTask('${task._id}')">Delete</button>
-      `;
-      taskList.appendChild(div);
-    });
-
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-// Delete task
 async function deleteTask(id) {
-  await fetch(API + "/api/tasks/" + id, {
+  await fetch(`/api/tasks/${id}`, {
     method: "DELETE",
-    headers: {
-      "Authorization": localStorage.getItem("token")
-    }
+    headers: { Authorization: token }
   });
 
   loadTasks();
-}
-
-// Auto login if token exists
-if (localStorage.getItem("token")) {
-  loadDashboard();
 }
