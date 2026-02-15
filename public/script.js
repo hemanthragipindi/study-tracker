@@ -1,99 +1,105 @@
-const API = "http://localhost:3000";
+const API = "";
 
-// Load all topics
-function loadTopics() {
-    fetch(API + "/topics")
-        .then(res => res.json())
-        .then(data => {
-            const table = document.getElementById("tableBody");
-            table.innerHTML = "";
+let isLogin = true;
 
-            let completed = 0;
-            const today = new Date().toISOString().split("T")[0];
-
-            data.forEach(t => {
-                if (t.status === "Completed") completed++;
-
-                const overdueClass =
-                    t.deadline && t.deadline < today && t.status !== "Completed"
-                        ? "overdue"
-                        : "";
-
-                table.innerHTML += `
-                    <tr>
-                        <td>${t.subject}</td>
-                        <td>${t.topic}</td>
-                        <td>${t.status}</td>
-                        <td class="${overdueClass}">${t.deadline || ""}</td>
-                        <td>
-                            <button onclick="updateStatus(${t.id}, 'Completed')">✅</button>
-                            <button onclick="updateStatus(${t.id}, 'Doubt')">❓</button>
-                            <button onclick="deleteTopic(${t.id})">🗑️</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            const percent =
-                data.length === 0
-                    ? 0
-                    : Math.round((completed / data.length) * 100);
-
-            const progressBar = document.getElementById("progressBar");
-            progressBar.style.width = percent + "%";
-            progressBar.innerText = percent + "%";
-        });
+function toggleForm() {
+  isLogin = !isLogin;
+  document.getElementById("formTitle").innerText = isLogin ? "Login" : "Register";
+  document.getElementById("name").style.display = isLogin ? "none" : "block";
+  document.getElementById("toggleText").innerText =
+    isLogin ? "Don't have an account? Register" : "Already have an account? Login";
 }
 
-// Add topic
-function addTopic() {
-    const subject = document.getElementById("subject").value;
-    const topic = document.getElementById("topic").value;
-    const deadline = document.getElementById("deadline").value;
+async function submitAuth() {
+  const name = document.getElementById("name").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-    if (!subject || !topic) {
-        alert("Please enter subject and topic");
-        return;
+  const endpoint = isLogin ? "/api/login" : "/api/register";
+
+  const body = isLogin
+    ? { email, password }
+    : { name, email, password };
+
+  const res = await fetch(API + endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  const data = await res.json();
+
+  if (isLogin) {
+    localStorage.setItem("token", data.token);
+    loadDashboard();
+  } else {
+    alert("Registered successfully! Now login.");
+    toggleForm();
+  }
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  location.reload();
+}
+
+function loadDashboard() {
+  document.getElementById("authCard").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  loadTasks();
+}
+
+async function addTask() {
+  const title = document.getElementById("title").value;
+  const subject = document.getElementById("subject").value;
+  const hours = document.getElementById("hours").value;
+
+  await fetch(API + "/api/tasks", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": localStorage.getItem("token")
+    },
+    body: JSON.stringify({ title, subject, hours })
+  });
+
+  loadTasks();
+}
+
+async function loadTasks() {
+  const res = await fetch(API + "/api/tasks", {
+    headers: {
+      "Authorization": localStorage.getItem("token")
     }
+  });
 
-    fetch(API + "/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, topic, deadline })
-    }).then(() => {
-        document.getElementById("subject").value = "";
-        document.getElementById("topic").value = "";
-        document.getElementById("deadline").value = "";
-        loadTopics();
-    });
+  const tasks = await res.json();
+  const taskList = document.getElementById("taskList");
+  taskList.innerHTML = "";
+
+  tasks.forEach(task => {
+    const div = document.createElement("div");
+    div.className = "task";
+    div.innerHTML = `
+      <strong>${task.title}</strong><br>
+      ${task.subject} - ${task.hours} hours
+      <button onclick="deleteTask('${task._id}')">Delete</button>
+    `;
+    taskList.appendChild(div);
+  });
 }
 
-// Update status
-function updateStatus(id, status) {
-    fetch(API + "/update/" + id, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status })
-    }).then(() => loadTopics());
+async function deleteTask(id) {
+  await fetch(API + "/api/tasks/" + id, {
+    method: "DELETE",
+    headers: {
+      "Authorization": localStorage.getItem("token")
+    }
+  });
+
+  loadTasks();
 }
 
-// Delete topic
-function deleteTopic(id) {
-    fetch(API + "/delete/" + id, {
-        method: "DELETE"
-    }).then(() => loadTopics());
+if (localStorage.getItem("token")) {
+  loadDashboard();
 }
-
-// Filter by subject
-function filterSubjects() {
-    const input = document.getElementById("search").value.toLowerCase();
-    const rows = document.querySelectorAll("#tableBody tr");
-
-    rows.forEach(row => {
-        const subject = row.children[0].innerText.toLowerCase();
-        row.style.display = subject.includes(input) ? "" : "none";
-    });
-}
-
-// Load data on page start
-loadTopics();
