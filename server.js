@@ -3,11 +3,10 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 
-const Task = require("./models/Task");
-
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static("public"));
 
 // =====================
 // MongoDB Connection
@@ -17,48 +16,58 @@ mongoose.connect(process.env.MONGO_URI)
 .catch(err => console.log(err));
 
 // =====================
-// Create Task
+// Weekly Schema
 // =====================
-app.post("/api/tasks", async (req, res) => {
-  try {
-    const task = new Task(req.body);
-    await task.save();
-    res.json(task);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to create task" });
+const weeklySchema = new mongoose.Schema({
+  weekStart: String,
+  weekEnd: String,
+  subject: String,
+  unit: String,
+  topic: String,
+  status: {
+    type: String,
+    default: "pending"
   }
 });
 
+const Weekly = mongoose.model("Weekly", weeklySchema);
+
 // =====================
-// Get All Tasks
+// Add Weekly Topic
 // =====================
-app.get("/api/tasks", async (req, res) => {
-  try {
-    const tasks = await Task.find();
-    res.json(tasks);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch tasks" });
-  }
+app.post("/api/weekly", async (req, res) => {
+  const data = new Weekly(req.body);
+  await data.save();
+  res.json(data);
 });
 
 // =====================
-// Delete Task
+// Get Weekly Topics
 // =====================
-app.delete("/api/tasks/:id", async (req, res) => {
-  try {
-    await Task.findByIdAndDelete(req.params.id);
-    res.json({ message: "Task deleted" });
-  } catch (err) {
-    res.status(500).json({ error: "Delete failed" });
-  }
+app.get("/api/weekly", async (req, res) => {
+  const data = await Weekly.find();
+  res.json(data);
 });
 
 // =====================
-// Serve Frontend
+// Update Status
 // =====================
-app.use(express.static("public"));
+app.put("/api/weekly/:id", async (req, res) => {
+  await Weekly.findByIdAndUpdate(
+    req.params.id,
+    { status: req.body.status }
+  );
+  res.json({ message: "Updated" });
+});
 
 // =====================
+// Delete Topic
+// =====================
+app.delete("/api/weekly/:id", async (req, res) => {
+  await Weekly.findByIdAndDelete(req.params.id);
+  res.json({ message: "Deleted" });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
