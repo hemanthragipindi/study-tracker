@@ -121,11 +121,8 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-
-// ==========================
-// EXPRESS 5 FIX (IMPORTANT)
-// ==========================
-app.get("/*", (req, res) => {
+// Serve frontend safely (Express 5 compatible)
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
