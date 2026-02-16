@@ -5,14 +5,14 @@ require("dotenv").config();
 
 const app = express();
 
-// 🔥 FIX CSP ISSUE
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com;"
+    "default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
   );
   next();
 });
+
 
 app.use(cors());
 app.use(express.json());
