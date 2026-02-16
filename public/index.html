@@ -1,17 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Study Tracker</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#111111">
+  <title>Study Tracker Pro</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="container">
+    <h1>📘 Study Tracker Pro</h1>
 
-<h1>📘 Study Tracker</h1>
+    <div class="navbar">
+      <a href="index.html">Weekly Schedule</a>
+      <a href="revision.html">Revision Schedule</a>
+    </div>
 
-<div class="nav">
-  <a href="weekly.html">Weekly Schedule</a>
-  <a href="revision.html">Revision Schedule</a>
-</div>
+    <div class="card">
+      <h3>Week Duration</h3>
+      <input type="date" id="fromDate">
+      <input type="date" id="toDate">
+    </div>
+
+    <div class="card">
+      <h3>Add Weekly Target</h3>
+      <input type="text" id="subject" placeholder="Subject">
+      <input type="text" id="unit" placeholder="Unit Name">
+      <textarea id="content" placeholder="Topics to complete this week"></textarea>
+      <button onclick="addTask()">Add Target</button>
+    </div>
+
+    <div id="taskList"></div>
+  </div>
+
+  <script src="weekly.js"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}
+</script>
 
 </body>
 </html>

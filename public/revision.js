@@ -1,19 +1,24 @@
-async function loadRevision() {
-  const res = await fetch("/api/weekly");
-  const data = await res.json();
+const revisionList = document.getElementById("revisionList");
 
-  const revisionList = document.getElementById("revisionList");
+async function loadRevision() {
+  const res = await fetch("/api/tasks");
+  const tasks = await res.json();
+
   revisionList.innerHTML = "";
 
-  data
-    .filter(task => task.status === "revision")
+  tasks
+    .filter(task => task.status === "Revise" || task.status === "Doubt")
     .forEach(task => {
-      revisionList.innerHTML += `
-        <div class="card">
-          <b>${task.subject}</b> (${task.unit})<br>
-          ${task.topic}
-        </div>
+      const div = document.createElement("div");
+      div.className = "card";
+
+      div.innerHTML = `
+        <h3>${task.subject} - ${task.unit}</h3>
+        <p>${task.content}</p>
+        <div class="status">Status: ${task.status}</div>
       `;
+
+      revisionList.appendChild(div);
     });
 }
 

@@ -1,50 +1,45 @@
-const API = "/api/weekly";
+const taskList = document.getElementById("taskList");
+
+async function loadTasks() {
+  const res = await fetch("/api/tasks");
+  const tasks = await res.json();
+
+  taskList.innerHTML = "";
+
+  tasks.forEach(task => {
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <h3>${task.subject} - ${task.unit}</h3>
+      <p>${task.content}</p>
+      <button class="btn-complete" onclick="updateStatus('${task._id}','Complete')">Complete</button>
+      <button class="btn-doubt" onclick="updateStatus('${task._id}','Doubt')">Doubt</button>
+      <button class="btn-revise" onclick="updateStatus('${task._id}','Revise')">Revise</button>
+      <button class="btn-delete" onclick="deleteTask('${task._id}')">Delete</button>
+      <div class="status">Status: ${task.status || "Pending"}</div>
+    `;
+
+    taskList.appendChild(div);
+  });
+}
 
 async function addTask() {
-  const data = {
-    weekStart: document.getElementById("weekStart").value,
-    weekEnd: document.getElementById("weekEnd").value,
-    subject: document.getElementById("subject").value,
-    unit: document.getElementById("unit").value,
-    topic: document.getElementById("topic").value,
-    status: "pending"
-  };
+  const subject = document.getElementById("subject").value;
+  const unit = document.getElementById("unit").value;
+  const content = document.getElementById("content").value;
 
-  await fetch(API, {
+  await fetch("/api/tasks", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
+    body: JSON.stringify({ subject, unit, content, status: "Pending" })
   });
 
   loadTasks();
 }
 
-async function loadTasks() {
-  const res = await fetch(API);
-  const data = await res.json();
-
-  const list = document.getElementById("list");
-  list.innerHTML = "";
-
-  data.forEach(task => {
-    list.innerHTML += `
-      <div class="card">
-        <b>${task.subject}</b> (${task.unit})<br>
-        ${task.topic}<br>
-        Week: ${task.weekStart} → ${task.weekEnd}<br>
-        Status: ${task.status}<br>
-
-        <button onclick="updateStatus('${task._id}','completed')">✅ Complete</button>
-        <button onclick="updateStatus('${task._id}','doubt')">❓ Doubt</button>
-        <button onclick="updateStatus('${task._id}','revision')">🔁 Revise</button>
-        <button onclick="deleteTask('${task._id}')">❌ Delete</button>
-      </div>
-    `;
-  });
-}
-
 async function updateStatus(id, status) {
-  await fetch(API + "/" + id, {
+  await fetch(`/api/tasks/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status })
@@ -54,10 +49,7 @@ async function updateStatus(id, status) {
 }
 
 async function deleteTask(id) {
-  await fetch(API + "/" + id, {
-    method: "DELETE"
-  });
-
+  await fetch(`/api/tasks/${id}`, { method: "DELETE" });
   loadTasks();
 }
 
