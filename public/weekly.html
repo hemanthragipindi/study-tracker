@@ -1,27 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>Study Tracker</title>
-    <link rel="stylesheet" href="style.css">
+  <title>Study Tracker</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<h2>📅 Weekly Planner</h2>
+<h1>📚 Study Tracker</h1>
 
-<div class="form">
-  <input type="date" id="weekStart">
-  <input type="date" id="weekEnd">
-  <input type="text" id="subject" placeholder="Subject">
-  <input type="text" id="unit" placeholder="Unit">
-  <input type="text" id="topic" placeholder="Topic">
-  <button onclick="addTask()">Add</button>
+<div class="home-buttons">
+  <a href="weekly.html" class="btn">Weekly Schedule</a>
+  <a href="revision.html" class="btn">Revision Schedule</a>
 </div>
 
-<h3>Your Weekly Topics</h3>
-<div id="list"></div>
+<div id="ai-button">💬</div>
 
-<script src="weekly.js"></script>
+<script src="ai.js"></script>
+
 </body>
 </html>

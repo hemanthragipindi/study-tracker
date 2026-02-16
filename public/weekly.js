@@ -1,56 +1,58 @@
-const taskList = document.getElementById("taskList");
+async function createWeek() {
+  const weekStart = document.getElementById("weekStart").value;
+  const weekEnd = document.getElementById("weekEnd").value;
 
-async function loadTasks() {
-  const res = await fetch("/api/tasks");
-  const tasks = await res.json();
-
-  taskList.innerHTML = "";
-
-  tasks.forEach(task => {
-    const div = document.createElement("div");
-    div.className = "card";
-
-    div.innerHTML = `
-      <h3>${task.subject} - ${task.unit}</h3>
-      <p>${task.content}</p>
-      <button class="btn-complete" onclick="updateStatus('${task._id}','Complete')">Complete</button>
-      <button class="btn-doubt" onclick="updateStatus('${task._id}','Doubt')">Doubt</button>
-      <button class="btn-revise" onclick="updateStatus('${task._id}','Revise')">Revise</button>
-      <button class="btn-delete" onclick="deleteTask('${task._id}')">Delete</button>
-      <div class="status">Status: ${task.status || "Pending"}</div>
-    `;
-
-    taskList.appendChild(div);
-  });
-}
-
-async function addTask() {
-  const subject = document.getElementById("subject").value;
-  const unit = document.getElementById("unit").value;
-  const content = document.getElementById("content").value;
-
-  await fetch("/api/tasks", {
+  const response = await fetch("/api/week", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ subject, unit, content, status: "Pending" })
+    body: JSON.stringify({
+      weekStart,
+      weekEnd,
+      subjects: []
+    })
   });
 
-  loadTasks();
+  const data = await response.json();
+  loadWeeks();
 }
 
-async function updateStatus(id, status) {
-  await fetch(`/api/tasks/${id}`, {
-    method: "PUT",
+async function loadWeeks() {
+  const res = await fetch("/api/week");
+  const weeks = await res.json();
+
+  const container = document.getElementById("weeksContainer");
+  container.innerHTML = "";
+
+  weeks.forEach(week => {
+    const div = document.createElement("div");
+    div.className = "week-card";
+    div.innerHTML = `
+      <h3>${week.weekStart} → ${week.weekEnd}</h3>
+      <button onclick="addSubject('${week._id}')">+ Add Subject</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function addSubject(weekId) {
+  const subjectName = prompt("Enter Subject Name:");
+  if (!subjectName) return;
+
+  const weeks = await fetch("/api/week").then(r => r.json());
+  const week = weeks.find(w => w._id === weekId);
+
+  week.subjects.push({
+    name: subjectName,
+    units: []
+  });
+
+  await fetch("/api/week", {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status })
+    body: JSON.stringify(week)
   });
 
-  loadTasks();
+  loadWeeks();
 }
 
-async function deleteTask(id) {
-  await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-  loadTasks();
-}
-
-loadTasks();
+loadWeeks();
