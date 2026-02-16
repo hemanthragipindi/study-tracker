@@ -1,46 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Study Tracker Pro</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Tracker</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="container">
+  <h1>📚 Study Tracker</h1>
 
-  <div class="card" id="authCard">
-    <h2 id="formTitle">Login</h2>
-
-    <input type="text" id="name" placeholder="Name (Register only)" style="display:none;">
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-
-    <button onclick="submitAuth()">Submit</button>
-
-    <p onclick="toggleForm()" id="toggleText">
-      Don't have an account? Register
-    </p>
+  <div class="form">
+    <input type="text" id="subject" placeholder="Subject">
+    <input type="text" id="topic" placeholder="Topic">
+    <button onclick="addTask()">Add Topic</button>
   </div>
 
-  <div class="dashboard hidden" id="dashboard">
-    <div class="topbar">
-      <h2>Study Tracker</h2>
-      <button onclick="logout()">Logout</button>
-    </div>
+  <h2>Your Topics</h2>
+  <ul id="taskList"></ul>
 
-    <div class="task-form">
-      <input type="text" id="title" placeholder="Topic">
-      <input type="text" id="subject" placeholder="Subject">
-      <input type="number" id="hours" placeholder="Hours">
-      <button onclick="addTask()">Add Task</button>
-    </div>
-
-    <div id="taskList"></div>
-  </div>
-
-</div>
-
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
