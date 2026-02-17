@@ -1,135 +1,141 @@
-require("dotenv").config();
-
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
-const path = require("path");
+require("dotenv").config();
 
 const app = express();
-
-app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static("public"));
 
+/* ================== MONGODB CONNECT ================== */
 
-// ==========================
-// MongoDB Connection
-// ==========================
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected ✅"))
   .catch(err => console.log(err));
 
+/* ================== SCHEMA ================== */
 
-// ==========================
-// Weekly Schema
-// ==========================
-const weekSchema = new mongoose.Schema({
-  weekStart: String,
-  weekEnd: String,
-  subjects: [
-    {
-      name: String,
-      units: [
-        {
-          unitNumber: Number,
-          topics: [
-            {
-              title: String,
-              status: { type: String, default: "pending" } // pending, complete, doubt, revise
-            }
-          ]
-        }
-      ]
-    }
-  ]
+const TopicSchema = new mongoose.Schema({
+  name: String,
+  revision: { type: Boolean, default: false },
+  completed: { type: Boolean, default: false },
+  deleted: { type: Boolean, default: false }
 });
 
-const Week = mongoose.model("Week", weekSchema);
-
-
-// ==========================
-// CREATE WEEK
-// ==========================
-app.post("/api/week", async (req, res) => {
-  const week = new Week(req.body);
-  await week.save();
-  res.json(week);
+const UnitSchema = new mongoose.Schema({
+  name: String,
+  topics: [TopicSchema]
 });
 
-
-// ==========================
-// GET ALL WEEKS
-// ==========================
-app.get("/api/week", async (req, res) => {
-  const weeks = await Week.find();
-  res.json(weeks);
+const SubjectSchema = new mongoose.Schema({
+  name: String,
+  units: [UnitSchema]
 });
 
+const Subject = mongoose.model("Subject", SubjectSchema);
 
-// ==========================
-// UPDATE TOPIC STATUS
-// ==========================
-app.put("/api/topic/:weekId/:subjectIndex/:unitIndex/:topicIndex", async (req, res) => {
-  const { weekId, subjectIndex, unitIndex, topicIndex } = req.params;
-  const { status } = req.body;
+/* ================== ROUTES ================== */
 
-  const week = await Week.findById(weekId);
-
-  week.subjects[subjectIndex]
-      .units[unitIndex]
-      .topics[topicIndex]
-      .status = status;
-
-  await week.save();
-  res.json({ message: "Updated" });
+/* Add Subject */
+app.post("/api/subject", async (req, res) => {
+  const { name } = req.body;
+  const subject = new Subject({ name, units: [] });
+  await subject.save();
+  res.json(subject);
 });
 
-
-// ==========================
-// GEMINI AI CHAT
-// ==========================
-app.post("/api/chat", async (req, res) => {
-  try {
-    const userMessage = req.body.message;
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: userMessage }]
-            }
-          ]
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    const reply =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "AI not responding.";
-
-    res.json({ reply });
-
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ reply: "AI Error" });
-  }
+/* Get Subjects */
+app.get("/api/subject", async (req, res) => {
+  const subjects = await Subject.find();
+  res.json(subjects);
 });
 
-// Serve frontend safely (Express 5 compatible)
-app.use((req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+/* Add Unit (max 6) */
+app.post("/api/unit/:subjectId", async (req, res) => {
+  const { name } = req.body;
+  const subject = await Subject.findById(req.params.subjectId);
+
+  if (subject.units.length >= 6)
+    return res.status(400).json({ error: "Max 6 units allowed" });
+
+  subject.units.push({ name, topics: [] });
+  await subject.save();
+  res.json(subject);
 });
 
+/* Add Topic */
+app.post("/api/topic/:subjectId/:unitIndex", async (req, res) => {
+  const { name } = req.body;
+  const subject = await Subject.findById(req.params.subjectId);
 
-// ==========================
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  subject.units[req.params.unitIndex].topics.push({ name });
+  await subject.save();
+  res.json(subject);
 });
+
+/* Mark Revision */
+app.put("/api/revision/:subjectId/:unitIndex/:topicIndex", async (req, res) => {
+  const subject = await Subject.findById(req.params.subjectId);
+  subject.units[req.params.unitIndex].topics[req.params.topicIndex].revision = true;
+  await subject.save();
+  res.json(subject);
+});
+
+/* Mark Completed */
+app.put("/api/completed/:subjectId/:unitIndex/:topicIndex", async (req, res) => {
+  const subject = await Subject.findById(req.params.subjectId);
+  subject.units[req.params.unitIndex].topics[req.params.topicIndex].completed = true;
+  await subject.save();
+  res.json(subject);
+});
+
+/* Delete Topic (move to recycle) */
+app.put("/api/delete/:subjectId/:unitIndex/:topicIndex", async (req, res) => {
+  const subject = await Subject.findById(req.params.subjectId);
+  subject.units[req.params.unitIndex].topics[req.params.topicIndex].deleted = true;
+  await subject.save();
+  res.json(subject);
+});
+
+/* Get Revision Topics */
+app.get("/api/revision", async (req, res) => {
+  const subjects = await Subject.find();
+  const revision = [];
+
+  subjects.forEach(sub => {
+    sub.units.forEach(unit => {
+      unit.topics.forEach(topic => {
+        if (topic.revision && !topic.deleted)
+          revision.push({ subject: sub.name, unit: unit.name, topic: topic.name });
+      });
+    });
+  });
+
+  res.json(revision);
+});
+
+/* Get Recycle Bin */
+app.get("/api/recycle", async (req, res) => {
+  const subjects = await Subject.find();
+  const recycle = [];
+
+  subjects.forEach(sub => {
+    sub.units.forEach(unit => {
+      unit.topics.forEach(topic => {
+        if (topic.deleted)
+          recycle.push({ subject: sub.name, unit: unit.name, topic: topic.name });
+      });
+    });
+  });
+
+  res.json(recycle);
+});
+
+/* Serve Frontend */
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/public/index.html");
+});
+
+/* ================== SERVER ================== */
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log("Server running on port", PORT));
